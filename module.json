@@ -1,0 +1,34 @@
+{
+    "id": "adequate-vision",
+    "title": "Adequate Vision",
+    "description": "A serviceable darkvision mode for dnd5e",
+    "authors": [
+        {
+            "name": "Shark that walks like a man"
+        }
+    ],
+    "scripts": [
+        "script.js"
+    ],
+    "version": "0.0.1",
+    "compatibility": {
+        "minimum": "10.286",
+        "verified": "10.286",
+        "maximum": "10"
+    },
+    "relationships": {
+        "systems": [
+            {
+                "id": "dnd5e",
+                "type": "system",
+                "compatibility": {
+                    "minimum": "2.0.3",
+                    "verified": "2.0.3"
+                }
+            }
+        ]
+    },
+    "url": "https://github.com/stwlam/adequate-vision",
+    "manifest": "https://github.com/stwlam/adequate-vision/releases/latest/download/module.json",
+    "download": "https://github.com/stwlam/adequate-vision/releases/latest/download/adequate-vision.zip"
+}

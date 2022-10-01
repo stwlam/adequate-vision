@@ -1,0 +1,33 @@
+name: Generate Release
+
+on:
+  workflow_dispatch:
+    branches: [master]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get Version
+        run: |
+          MODULE_VERSION=$(grep -oP '(?<="version": ")[^"]+' ./module.json | tr -d '\n')
+          echo "moduleVersion=$MODULE_VERSION" >> $GITHUB_ENV
+
+      - name: Zip Files
+        working-directory: ./
+        run: zip -r ./adequate-vision.zip module.json script.js *.md
+
+      - name: Create Version Release
+        id: create_version_release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ env.moduleVersion }}
+          allowUpdates: false
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: './module.json,./adequate-vision.zip'
+          tag: ${{ env.moduleVersion }}
