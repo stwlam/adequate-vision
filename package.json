@@ -1,0 +1,20 @@
+{
+  "name": "adequate-vision",
+  "version": "0.0.2",
+  "description": "Serviceable vision management for dnd5e",
+  "main": "script.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stwlam/adequate-vision.git"
+  },
+  "author": "Shark that walks like a man",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stwlam/adequate-vision/issues"
+  },
+  "homepage": "https://github.com/stwlam/adequate-vision#readme",
+  "private": true,
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
+}

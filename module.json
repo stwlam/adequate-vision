@@ -1,7 +1,7 @@
 {
     "id": "adequate-vision",
     "title": "Adequate Vision",
-    "description": "A serviceable darkvision mode for dnd5e",
+    "description": "Serviceable vision management for dnd5e",
     "authors": [
         {
             "name": "Shark that walks like a man"
@@ -10,10 +10,10 @@
     "scripts": [
         "script.js"
     ],
-    "version": "0.0.1",
+    "version": "0.0.2",
     "compatibility": {
         "minimum": "10.286",
-        "verified": "10.286",
+        "verified": "10.287",
         "maximum": "10"
     },
     "relationships": {
