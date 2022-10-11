@@ -12,7 +12,23 @@ Hooks.once("init", () => {
     },
     vision: {
       darkness: { adaptive: true },
-      defaults: { contrast: 0.05, saturation: -1.0, brightness: 0.75, range: 60 },
+      defaults: { contrast: 0.05, saturation: -1.0, brightness: 0.75 },
+    },
+  });
+
+  CONFIG.Canvas.visionModes.devilsSight = new VisionMode({
+    id: "devilsSight",
+    label: "Devil's Sight",
+    canvas: {
+      shader: ColorAdjustmentsSamplerShader,
+      uniforms: { enable: true, contrast: 0, saturation: 0, brightness: 0 },
+    },
+    lighting: {
+      background: { visibility: VisionMode.LIGHTING_VISIBILITY.REQUIRED },
+    },
+    vision: {
+      darkness: { adaptive: true },
+      defaults: { contrast: 0, saturation: 0, brightness: 0.75, range: 120 },
     },
   });
 });
@@ -47,6 +63,20 @@ Hooks.on("updateActor", (actor, changes, context, userId) => {
   }
 });
 
+// Handle addition and removal of Devil's Sight
+Hooks.on("createActiveEffect", (effect) => {
+  // Could use a better check than a localization-unfriendly label
+  if (effect.parent instanceof Actor) {
+    updateTokens(effect.parent);
+  }
+});
+
+Hooks.on("deleteActiveEffect", (effect) => {
+  if (effect.parent instanceof Actor) {
+    updateTokens(effect.parent);
+  }
+});
+
 // Update token sources when a token is updated
 Hooks.on("updateToken", (token, changes, context, userId) => {
   if (!token.actor) return;
@@ -69,18 +99,24 @@ function updateTokens(actor) {
   const modes = Object.entries(actor.system.attributes.senses)
     .filter(([sense, range]) => handledSenses.includes(sense) && typeof range === "number" && range > 0)
     .reduce((entries, [sense, range]) => ({ ...entries, [sense]: range }), {});
+  if (actor.effects.some((e) => e.label === "Devil's Sight" && !e.disabled && !e.isSuppressed)) {
+    modes.devilsSight = 120;
+  }
 
   let madeUpdates = false;
   const tokens = actor.getActiveTokens(false, true).filter((t) => t.sight.enabled);
   for (const token of tokens) {
     const updates = {};
-    const { sight, detectionModes } = token._source;
+    const { sight, detectionModes } = token;
 
-    // Darkvision
-    if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
+    // Devil's sight and darkvision
+    if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== mode.devilsSight)) {
+      const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
+      updates.sight = { visionMode: "devilsSight", ...defaults };
+    } else if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
       const defaults = CONFIG.Canvas.visionModes.darkvision.vision.defaults;
       updates.sight = { visionMode: "darkvision", ...defaults, range: modes.darkvision };
-    } else if (sight.visionMode !== "basic") {
+    } else {
       updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
     }
 
@@ -90,11 +126,11 @@ function updateTokens(actor) {
       if (!hasFeelTremor) {
         updates.detectionModes = [
           { id: "feelTremor", enabled: true, range: modes.tremorsense },
-          ...detectionModes.filter((m) => m.id !== "feelTremor"),
+          ...token._source.detectionModes.filter((m) => m.id !== "feelTremor"),
         ];
       }
     } else if (detectionModes.some((m) => m.id === "feelTremor")) {
-      updates.detectionModes = detectionModes.filter((m) => m.id !== "feelTremor");
+      updates.detectionModes = token._source.detectionModes.filter((m) => m.id !== "feelTremor");
     }
 
     // Update?
