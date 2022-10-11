@@ -10,10 +10,10 @@
     "scripts": [
         "script.js"
     ],
-    "version": "0.0.2",
+    "version": "0.0.3",
     "compatibility": {
         "minimum": "10.286",
-        "verified": "10.287",
+        "verified": "10.288",
         "maximum": "10"
     },
     "relationships": {
