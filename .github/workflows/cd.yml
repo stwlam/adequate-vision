@@ -29,5 +29,5 @@ jobs:
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: './module.json,./adequate-vision.zip'
+          artifacts: './module.json,./*.md,./adequate-vision.zip'
           tag: ${{ env.moduleVersion }}

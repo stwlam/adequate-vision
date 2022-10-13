@@ -12,7 +12,7 @@ Hooks.once("init", () => {
     },
     vision: {
       darkness: { adaptive: true },
-      defaults: { contrast: 0.05, saturation: -1.0, brightness: 0.75 },
+      defaults: { contrast: 0, saturation: -1.0, brightness: 0.65 },
     },
   });
 
@@ -28,31 +28,34 @@ Hooks.once("init", () => {
     },
     vision: {
       darkness: { adaptive: true },
-      defaults: { contrast: 0, saturation: 0, brightness: 0.75, range: 120 },
+      defaults: { contrast: 0, saturation: 0, brightness: 0.65, range: 120 },
     },
   });
+
+  CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
 });
 
 // Register setting
 Hooks.once("setup", () => {
   game.settings.register("adequate-vision", "linkActorSenses", {
     name: "Link Actor Senses (In Testing!)",
-    hint: "Automatically add and remove vision/detection modes according to the senses possessed by each token's corresponding actor. Currently only supported for PCs.",
+    hint: "Automatically manage vision/detection modes according to the senses possessed by each token's corresponding actor. Currently only supported for PCs.",
     scope: "world",
     config: true,
-    default: false,
+    default: true,
     requiresReload: true,
     type: Boolean,
   });
 });
 
-// Update token sources every time a scene is viewed, including on initial load
+// Update token sources when the game is ready
+Hooks.once("ready", () => {
+  onReady();
+});
+
+// Update token sources every time a scene is viewed
 Hooks.on("canvasReady", () => {
-  const tokens = canvas.scene?.tokens.contents ?? [];
-  const actors = new Set(tokens.flatMap((t) => t.actor ?? []));
-  for (const actor of actors) {
-    updateTokens(actor);
-  }
+  if (game.ready) onReady();
 });
 
 // Update token sources when an actor's senses are updated
@@ -77,6 +80,15 @@ Hooks.on("deleteActiveEffect", (effect) => {
   }
 });
 
+// Update when a new token is added to a scene
+Hooks.on("createToken", (token, context, userId) => {
+  if (token.actor) {
+    Promise.resolve().then(() => {
+      updateTokens(token.actor);
+    });
+  }
+});
+
 // Update token sources when a token is updated
 Hooks.on("updateToken", (token, changes, context, userId) => {
   if (!token.actor) return;
@@ -87,7 +99,15 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
   }
 });
 
-function updateTokens(actor) {
+function onReady() {
+  const tokens = canvas.scene?.tokens.contents ?? [];
+  const actors = new Set(tokens.flatMap((t) => t.actor ?? []));
+  for (const actor of actors) {
+    updateTokens(actor, { force: true });
+  }
+}
+
+function updateTokens(actor, { force = false } = {}) {
   // Only make updates if the following are true
   const linkActorSenses = game.settings.get("adequate-vision", "linkActorSenses");
   const tokenVisionEnabled = !!canvas.scene?.tokenVision;
@@ -95,7 +115,7 @@ function updateTokens(actor) {
   const checks = [linkActorSenses, tokenVisionEnabled, userIsObserver, actor.type === "character"];
   if (!checks.every((c) => c)) return;
 
-  const handledSenses = ["darkvision", "blindsight", "tremorsense"];
+  const handledSenses = ["darkvision", "blindsight", "tremorsense", "truesight"];
   const modes = Object.entries(actor.system.attributes.senses)
     .filter(([sense, range]) => handledSenses.includes(sense) && typeof range === "number" && range > 0)
     .reduce((entries, [sense, range]) => ({ ...entries, [sense]: range }), {});
@@ -108,6 +128,7 @@ function updateTokens(actor) {
   for (const token of tokens) {
     const updates = {};
     const { sight, detectionModes } = token;
+    const canSeeInDark = ["darkvision", "devilsSight", "truesight"].some((m) => !!modes[m]);
 
     // Devil's sight and darkvision
     if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== mode.devilsSight)) {
@@ -116,18 +137,31 @@ function updateTokens(actor) {
     } else if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
       const defaults = CONFIG.Canvas.visionModes.darkvision.vision.defaults;
       updates.sight = { visionMode: "darkvision", ...defaults, range: modes.darkvision };
-    } else {
+    } else if (!canSeeInDark && token.sight.visionMode !== "basic" && token.sight.range !== null) {
       updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
+    }
+
+    // Blindsight
+    if (modes.blindsight) {
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "blindsight", enabled: true, range: modes.blindsight });
+    }
+
+    // Truesight
+    if (modes.truesight && sight.visionMode !== "devilsSight") {
+      const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
+      const range = Math.max(modes.truesight, modes.devilsSight ?? 0);
+      updates.sight = { visionMode: "devilsSight", ...defaults, range };
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "seeInvisibility", enabled: true, range: modes.truesight });
     }
 
     // Tremorsense
     if (modes.tremorsense) {
       const hasFeelTremor = detectionModes.some((m) => m.id === "feelTremor" && m.range === mode.tremorsense);
       if (!hasFeelTremor) {
-        updates.detectionModes = [
-          { id: "feelTremor", enabled: true, range: modes.tremorsense },
-          ...token._source.detectionModes.filter((m) => m.id !== "feelTremor"),
-        ];
+        updates.detectionModes ??= [];
+        updates.detectionModes.push({ id: "feelTremor", enabled: true, range: modes.tremorsense });
       }
     } else if (detectionModes.some((m) => m.id === "feelTremor")) {
       updates.detectionModes = token._source.detectionModes.filter((m) => m.id !== "feelTremor");
@@ -141,7 +175,32 @@ function updateTokens(actor) {
   }
 
   // Reinitialize vision and refresh lighting
-  if (madeUpdates && (game.user.character || canvas.tokens.controlled.length > 0)) {
+  if (madeUpdates || force) {
     canvas.perception.update({ initializeVision: true, refreshLighting: true }, true);
+  }
+}
+
+class BlindDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "blindsight",
+      label: "Blindsight",
+      type: DetectionMode.DETECTION_TYPES.SIGHT,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    const filter = (this._detectionFilter ??= OutlineOverlayFilter.create({
+      wave: true,
+      knockout: false,
+    }));
+    filter.thickness = 1;
+    return filter;
+  }
+
+  /** @override */
+  _canDetect(visionSource, target) {
+    return target instanceof Token || target instanceof DoorControl;
   }
 }
