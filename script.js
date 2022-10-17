@@ -262,3 +262,62 @@ class InvisibilityDetectionMode extends DetectionMode {
     return isVisible;
   }
 }
+
+VisionSource.prototype.initialize = function (data = {}) {
+  // Initialize new input data
+  const changes = this._initializeData(data);
+
+  // Determine the active VisionMode
+  if (this.data.blinded) {
+    const object = this.object;
+    const blindsightRange = object instanceof Token
+      ? object.getLightRadius(object.document.detectionModes.find(m => m.enabled && m.id === "blindsight")?.range ?? 0) : 0;
+    if (blindsightRange > 0) {
+      this.visionMode = CONFIG.Canvas.visionModes.tremorsense;
+      this.data.radius = blindsightRange;
+    } else {
+      this.visionMode = CONFIG.Canvas.visionModes.blindness;
+      this.data.radius = this.data.externalRadius;
+    }
+  } else {
+    const visionMode = this.data.visionMode in CONFIG.Canvas.visionModes ? this.data.visionMode : "basic";
+    this.visionMode = CONFIG.Canvas.visionModes[visionMode];
+  }
+  if (!(this.visionMode instanceof VisionMode)) {
+    throw new Error("The VisionSource was not provided a valid VisionMode identifier");
+  }
+
+  // Configure animation, if any
+  this.animation = {
+    animation: this.visionMode.animate,
+    seed: this.animation.seed ?? data.seed ?? Math.floor(Math.random() * 100000)
+  };
+
+  // Compute derived data attributes
+  this.colorRGB = Color.from(this.data.color)?.rgb;
+
+  // Compute the unrestricted line-of-sight polygon
+  this.los = this._createPolygon();
+
+  // Compute the constrained vision polygon
+  this.fov = this._createRestrictedPolygon();
+
+  // Render soft edges according to performances mode
+  // TODO: this is a temporary workaround to know if we have a complete circle, to handle fast triangulation
+  const isCompleteCircle = (this.fov.points.length === PIXI.Circle.approximateVertexDensity(this.radius) * 2);
+  this._flags.renderSoftEdges = canvas.performance.lightSoftEdges && (!isCompleteCircle || (this.data.angle < 360));
+
+  // Initialize or update meshes with the constrained los points array
+  this._initializeMeshes(this.fov);
+  const updateShaders = ("visionMode" in changes);
+  if (updateShaders) this._initializeShaders();
+  else if (this.constructor._appearanceKeys.some(k => k in changes)) {
+    for (let k of Object.keys(this._resetUniforms)) {
+      this._resetUniforms[k] = true;
+    }
+  }
+
+  // Set the correct blend mode
+  this._initializeBlending();
+  return this;
+};
