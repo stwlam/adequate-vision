@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.5
+* Limit See Invisibility detection mode to areas of map that are actually seen (contributed by dev7355608)
+
 ## Version 0.0.4
 * Add support for blindsight and truesight
 * Fiddle with darkvision contrast and brightness defaults
