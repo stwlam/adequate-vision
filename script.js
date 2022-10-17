@@ -33,6 +33,7 @@ Hooks.once("init", () => {
   });
 
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
+  CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
 });
 
 // Register setting
@@ -202,5 +203,62 @@ class BlindDetectionMode extends DetectionMode {
   /** @override */
   _canDetect(visionSource, target) {
     return target instanceof Token || target instanceof DoorControl;
+  }
+}
+
+class InvisibilityDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "seeInvisibility",
+      label: "DETECTION.SeeInvisibility",
+      type: DetectionMode.DETECTION_TYPES.SIGHT,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    return this._detectionFilter ??= GlowOverlayFilter.create({
+      glowColor: [0, 0.60, 0.33, 1]
+    });
+  }
+
+  /** @override */
+  _canDetect(visionSource, target) {
+    const source = visionSource.object;
+
+    // Only invisible tokens can be detected; the vision source must not be blinded
+    return !(source instanceof Token
+      && source.document.hasStatusEffect(CONFIG.specialStatusEffects.BLIND))
+      && target instanceof Token
+      && target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE);
+  }
+
+  /** @override */
+  _testPoint(visionSource, mode, target, test) {
+    const statusId = CONFIG.specialStatusEffects.INVISIBLE;
+    let effects;
+
+    // Temporarily remove the invisible status effect from the target (see TokenDocument#hasStatusEffect)
+    if (!target.actor) {
+      const icon = CONFIG.statusEffects.find(e => e.id === statusId)?.icon;
+
+      effects = this.effects;
+      this.effects = this.effects.filter(e => e !== icon);
+    } else {
+      effects = target.actor.effects.filter(e => !e.disabled && e.getFlag("core", "statusId") === statusId);
+      effects.forEach(e => e.disabled = true);
+    }
+
+    // Test visibility without the invisible status effect
+    const isVisible = canvas.effects.visibility.testVisibility(test.point, { tolerance: 0, object: target });
+
+    // Restore the status effect
+    if (!target.actor) {
+      this.effects = effects;
+    } else {
+      effects.forEach(e => e.disabled = false);
+    }
+
+    return isVisible;
   }
 }
