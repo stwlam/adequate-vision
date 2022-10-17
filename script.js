@@ -132,7 +132,7 @@ function updateTokens(actor, { force = false } = {}) {
     const canSeeInDark = ["darkvision", "devilsSight", "truesight"].some((m) => !!modes[m]);
 
     // Devil's sight and darkvision
-    if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== mode.devilsSight)) {
+    if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== modes.devilsSight)) {
       const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
       updates.sight = { visionMode: "devilsSight", ...defaults };
     } else if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
