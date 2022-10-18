@@ -32,6 +32,7 @@ Hooks.once("init", () => {
     },
   });
 
+  CONFIG.Canvas.detectionModes.basicSight = new BasicDetectionMode();
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
 });
@@ -181,6 +182,27 @@ function updateTokens(actor, { force = false } = {}) {
   }
 }
 
+class BasicDetectionMode extends DetectionModeBasicSight {
+  constructor() {
+    super({
+      id: "basicSight",
+      label: "DETECTION.BasicSight",
+      type: DetectionMode.DETECTION_TYPES.SIGHT,
+    });
+  }
+
+  /** @override */
+  testVisibility(visionSource, mode, config = {}) {
+    if (visionSource.data.blinded) {
+      if (!(visionSource.object instanceof Token)) return false;
+      mode = visionSource.object.document.detectionModes.find(m => m.id === "blindsight");
+      if (!mode) return false;
+      return CONFIG.Canvas.detectionModes.blindsight.testVisibility(visionSource, mode, config);
+    }
+    return super.testVisibility(visionSource, mode, config);
+  }
+}
+
 class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
@@ -202,7 +224,7 @@ class BlindDetectionMode extends DetectionMode {
 
   /** @override */
   _canDetect(visionSource, target) {
-    return target instanceof Token || target instanceof DoorControl;
+    return true;
   }
 }
 
