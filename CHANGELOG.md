@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.1.0
+* Extend actor-sense link support to NPCs
+* Handle Active Effect updates (in addition to creates/deletes)
+
 ## Version 0.0.5
 * Limit See Invisibility detection mode to areas of map that are actually seen (contributed by dev7355608)
 
