@@ -4,7 +4,10 @@ Serviceable vision management for dnd5e
 
 ## How It Works
 
-This module replaces the core darkvision mode with one that has fewer unwelcome visual surprises and is more in tune with dnd5e rules. It also adds a "devil's sight" vision mode and blindsight detection mode.
+This module replaces some core vision and detection modes with ones that have fewer unwelcome visual surprises and is more in tune with dnd5e rules:
+- Dim lighting outside an a token's darkvision range won't be rendered with higher brightness.
+- If an invisible token stands in darkness, darkvision or a similar sense will be necessary to see it.
+- Vision/detection modes have been added to support blindsight, truesight, and Devil's Sight.
 
 Additionally, it includes a setting ("Link Actor Senses") to link each PC token's vision and detection modes with its corresponding actor's senses. For greater convenience, consider using this setting with a global illumination threshold at a point where you deem "darkness" to end (e.g., 0.75 darkness).
 

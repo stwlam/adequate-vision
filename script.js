@@ -67,21 +67,24 @@ Hooks.on("updateActor", (actor, changes, context, userId) => {
   }
 });
 
-// Handle addition and removal of Devil's Sight
+// Handle updates of actor senses via AEs
 Hooks.on("createActiveEffect", (effect) => {
-  // Could use a better check than a localization-unfriendly label
   if (effect.parent instanceof Actor) {
     updateTokens(effect.parent);
   }
 });
-
+Hooks.on("updateActiveEffect", (effect) => {
+  if (effect.parent instanceof Actor) {
+    updateTokens(effect.parent);
+  }
+});
 Hooks.on("deleteActiveEffect", (effect) => {
   if (effect.parent instanceof Actor) {
     updateTokens(effect.parent);
   }
 });
 
-// Update when a new token is added to a scene
+// Process when a new token is added or updated
 Hooks.on("createToken", (token, context, userId) => {
   if (token.actor) {
     Promise.resolve().then(() => {
@@ -89,8 +92,6 @@ Hooks.on("createToken", (token, context, userId) => {
     });
   }
 });
-
-// Update token sources when a token is updated
 Hooks.on("updateToken", (token, changes, context, userId) => {
   if (!token.actor) return;
 
@@ -113,13 +114,15 @@ function updateTokens(actor, { force = false } = {}) {
   const linkActorSenses = game.settings.get("adequate-vision", "linkActorSenses");
   const tokenVisionEnabled = !!canvas.scene?.tokenVision;
   const userIsObserver = actor.getUserLevel(game.user) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
-  const checks = [linkActorSenses, tokenVisionEnabled, userIsObserver, actor.type === "character"];
+  const checks = [linkActorSenses, tokenVisionEnabled, userIsObserver, ["character", "npc"].includes(actor.type)];
   if (!checks.every((c) => c)) return;
 
   const handledSenses = ["darkvision", "blindsight", "tremorsense", "truesight"];
   const modes = Object.entries(actor.system.attributes.senses)
     .filter(([sense, range]) => handledSenses.includes(sense) && typeof range === "number" && range > 0)
     .reduce((entries, [sense, range]) => ({ ...entries, [sense]: range }), {});
+
+  // Could use a better check than a localization-unfriendly label
   if (actor.effects.some((e) => e.label === "Devil's Sight" && !e.disabled && !e.isSuppressed)) {
     modes.devilsSight = 120;
   }
@@ -217,9 +220,7 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   static getDetectionFilter() {
-    return this._detectionFilter ??= GlowOverlayFilter.create({
-      glowColor: [0, 0.60, 0.33, 1]
-    });
+    return (this._detectionFilter ??= GlowOverlayFilter.create({ glowColor: [0, 0.6, 0.33, 1] }));
   }
 
   /** @override */
@@ -227,10 +228,11 @@ class InvisibilityDetectionMode extends DetectionMode {
     const source = visionSource.object;
 
     // Only invisible tokens can be detected; the vision source must not be blinded
-    return !(source instanceof Token
-      && source.document.hasStatusEffect(CONFIG.specialStatusEffects.BLIND))
-      && target instanceof Token
-      && target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE);
+    return (
+      !(source instanceof Token && source.document.hasStatusEffect(CONFIG.specialStatusEffects.BLIND)) &&
+      target instanceof Token &&
+      target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE)
+    );
   }
 
   /** @override */
@@ -240,13 +242,15 @@ class InvisibilityDetectionMode extends DetectionMode {
 
     // Temporarily remove the invisible status effect from the target (see TokenDocument#hasStatusEffect)
     if (!target.actor) {
-      const icon = CONFIG.statusEffects.find(e => e.id === statusId)?.icon;
+      const icon = CONFIG.statusEffects.find((e) => e.id === statusId)?.icon;
 
       effects = this.effects;
-      this.effects = this.effects.filter(e => e !== icon);
+      this.effects = this.effects.filter((e) => e !== icon);
     } else {
-      effects = target.actor.effects.filter(e => !e.disabled && e.getFlag("core", "statusId") === statusId);
-      effects.forEach(e => e.disabled = true);
+      effects = target.actor.effects.filter((e) => !e.disabled && e.getFlag("core", "statusId") === statusId);
+      for (const effect of effects) {
+        effect.disabled = true;
+      }
     }
 
     // Test visibility without the invisible status effect
@@ -256,7 +260,9 @@ class InvisibilityDetectionMode extends DetectionMode {
     if (!target.actor) {
       this.effects = effects;
     } else {
-      effects.forEach(e => e.disabled = false);
+      for (const effect of effects) {
+        effect.disabled = false;
+      }
     }
 
     return isVisible;
