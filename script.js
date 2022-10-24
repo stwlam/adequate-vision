@@ -237,8 +237,16 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   _testPoint(visionSource, mode, target, test) {
+    const source = visionSource.object;
     const statusId = CONFIG.specialStatusEffects.INVISIBLE;
-    let effects;
+    let effects, detectionModes;
+
+    // Temporarily remove all detection modes that are not sight-based from the source
+    if (source instanceof Token) {
+      detectionModes = source.document.detectionModes;
+      source.document.detectionModes = detectionModes.filter(
+        (m) => CONFIG.Canvas.detectionModes[m.id]?.type === DetectionMode.DETECTION_TYPES.SIGHT);
+    }
 
     // Temporarily remove the invisible status effect from the target (see TokenDocument#hasStatusEffect)
     if (!target.actor) {
@@ -253,8 +261,13 @@ class InvisibilityDetectionMode extends DetectionMode {
       }
     }
 
-    // Test visibility without the invisible status effect
+    // Test sight-based visibility without the invisible status effect
     const isVisible = canvas.effects.visibility.testVisibility(test.point, { tolerance: 0, object: target });
+
+    // Restore the detection modes
+    if (detectionModes) {
+      source.document.detectionModes = detectionModes;
+    }
 
     // Restore the status effect
     if (!target.actor) {
