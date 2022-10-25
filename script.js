@@ -237,6 +237,10 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   _testPoint(visionSource, mode, target, test) {
+    if (!this._testRange(visionSource, mode, target, test)) {
+      return false;
+    }
+
     const source = visionSource.object;
     const statusId = CONFIG.specialStatusEffects.INVISIBLE;
     let effects, detectionModes;
