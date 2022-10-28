@@ -157,7 +157,7 @@ function updateTokens(actor, { force = false } = {}) {
       const range = Math.max(modes.truesight, modes.devilsSight ?? 0);
       updates.sight = { visionMode: "devilsSight", ...defaults, range };
       updates.detectionModes ??= [];
-      updates.detectionModes.push({ id: "seeInvisibility", enabled: true, range: modes.truesight });
+      updates.detectionModes.push({ id: "seeAll", enabled: true, range: modes.truesight });
     }
 
     // Tremorsense
