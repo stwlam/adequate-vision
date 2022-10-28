@@ -226,11 +226,8 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   _canDetect(visionSource, target) {
-    const source = visionSource.object;
-
-    // Only invisible tokens can be detected; the vision source must not be blinded
+    // Only invisible tokens can be detected
     return (
-      !(source instanceof Token && source.document.hasStatusEffect(CONFIG.specialStatusEffects.BLIND)) &&
       target instanceof Token &&
       target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE)
     );
