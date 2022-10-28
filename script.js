@@ -215,6 +215,7 @@ class InvisibilityDetectionMode extends DetectionMode {
       id: "seeInvisibility",
       label: "DETECTION.SeeInvisibility",
       type: DetectionMode.DETECTION_TYPES.SIGHT,
+      walls: false,
     });
   }
 
@@ -237,6 +238,10 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   _testPoint(visionSource, mode, target, test) {
+    if (!this._testRange(visionSource, mode, target, test)) {
+      return false;
+    }
+
     const source = visionSource.object;
     const statusId = CONFIG.specialStatusEffects.INVISIBLE;
     let effects, detectionModes;
