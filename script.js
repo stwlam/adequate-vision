@@ -141,8 +141,8 @@ function updateTokens(actor, { force = false } = {}) {
     } else if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
       const defaults = CONFIG.Canvas.visionModes.darkvision.vision.defaults;
       updates.sight = { visionMode: "darkvision", ...defaults, range: modes.darkvision };
-    } else if (!canSeeInDark && token.sight.visionMode !== "basic" && token.sight.range !== null) {
-      updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
+    } else if (!canSeeInDark && (token.sight.visionMode !== "darkvision" || token.sight.range !== null)) {
+      updates.sight = { visionMode: "darkvision", contrast: 0, brightness: 0, saturation: 0, range: null };
     }
 
     // Blindsight
