@@ -189,7 +189,7 @@ class BlindDetectionMode extends DetectionMode {
     super({
       id: "blindsight",
       label: "Blindsight",
-      type: DetectionMode.DETECTION_TYPES.SIGHT,
+      type: DetectionMode.DETECTION_TYPES.OTHER,
     });
   }
 
