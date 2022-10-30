@@ -184,15 +184,6 @@ function updateTokens(actor, { force = false } = {}) {
   }
 }
 
-const TOTAL_COVER_TYPE = Symbol();
-
-Object.defineProperty(WallDocument.prototype, TOTAL_COVER_TYPE, {
-  get() {
-    // A wall provides total cover if it restricts at least one of the senses
-    return Math.max(this.move, this.light, this.sight, this.sound);
-  }
-});
-
 class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
@@ -223,7 +214,7 @@ class BlindDetectionMode extends DetectionMode {
     return !CONFIG.Canvas.losBackend.testCollision(
       { x: visionSource.x, y: visionSource.y },
       test.point,
-      { type: TOTAL_COVER_TYPE, mode: "any", source: visionSource }
+      { type: "move", mode: "any", source: visionSource }
     );
   }
 }
