@@ -33,6 +33,7 @@ Hooks.once("init", () => {
   });
 
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
+  CONFIG.Canvas.detectionModes.devilsSight = new DevilsSightDetectionMode();
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
 });
 
@@ -145,6 +146,12 @@ function updateTokens(actor, { force = false } = {}) {
       updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
     }
 
+    // Devil's sight
+    if (modes.devilsSight) {
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "devilsSight", enabled: true, range: modes.devilsSight });
+    }
+
     // Blindsight
     if (modes.blindsight) {
       updates.detectionModes ??= [];
@@ -206,6 +213,25 @@ class BlindDetectionMode extends DetectionMode {
   /** @override */
   _canDetect(visionSource, target) {
     return target instanceof Token || target instanceof DoorControl;
+  }
+}
+
+class DevilsSightDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "devilsSight",
+      label: "Devil's Sight",
+      type: DetectionMode.DETECTION_TYPES.SIGHT,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    const filter = (this._detectionFilter ??= OutlineOverlayFilter.create({
+      outlineColor: [0.85, 0.85, 1.0, 1],
+      knockout: true,
+    }));
+    return filter;
   }
 }
 
