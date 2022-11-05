@@ -34,7 +34,10 @@ Hooks.once("init", () => {
 
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
   CONFIG.Canvas.detectionModes.devilsSight = new DevilsSightDetectionMode();
+  CONFIG.Canvas.detectionModes.echolocation = new EcholocationDetectionMode();
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
+
+  CONFIG.specialStatusEffects.DEAF = "deaf";
 });
 
 // Register setting
@@ -232,6 +235,47 @@ class DevilsSightDetectionMode extends DetectionMode {
       knockout: true,
     }));
     return filter;
+  }
+}
+
+class EcholocationDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "echolocation",
+      label: "Echolocation",
+      type: DetectionMode.DETECTION_TYPES.SOUND,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    const filter = (this._detectionFilter ??= OutlineOverlayFilter.create({
+      wave: true,
+      knockout: false,
+    }));
+    filter.thickness = 1;
+    return filter;
+  }
+
+  /** @override */
+  _canDetect(visionSource, target) {
+    // Echolocation doesn't work while deafened.
+    const source = visionSource.object;
+    return !(source instanceof Token && source.document.hasStatusEffect(CONFIG.specialStatusEffects.DEAF));
+  }
+
+  /** @override */
+  _testLOS(visionSource, mode, target, test) {
+    // Echolocation is blocked by total cover and sound restrictions.
+    return !(CONFIG.Canvas.losBackend.testCollision(
+      { x: visionSource.x, y: visionSource.y },
+      test.point,
+      { type: "move", mode: "any", source: visionSource }
+    ) || CONFIG.Canvas.losBackend.testCollision(
+      { x: visionSource.x, y: visionSource.y },
+      test.point,
+      { type: "sound", mode: "any", source: visionSource }
+    ));
   }
 }
 
