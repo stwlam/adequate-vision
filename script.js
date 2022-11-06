@@ -138,7 +138,8 @@ function updateTokens(actor, { force = false } = {}) {
     const { sight, detectionModes } = token;
     const canSeeInDark = ["darkvision", "devilsSight", "truesight"].some((m) => !!modes[m]);
 
-    // Devil's sight and darkvision
+    // VISION MODES
+
     if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== modes.devilsSight)) {
       const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
       updates.sight = { visionMode: "devilsSight", ...defaults };
@@ -148,6 +149,8 @@ function updateTokens(actor, { force = false } = {}) {
     } else if (!canSeeInDark && token.sight.visionMode !== "basic" && token.sight.range !== null) {
       updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
     }
+
+    // DETECTION MODES
 
     // Devil's sight
     if (modes.devilsSight) {
@@ -202,7 +205,7 @@ function testAngle(visionSource, point) {
     if (dx * dx + dy * dy > externalRadius * externalRadius) {
       const aMin = rotation + 90 - angle / 2;
       const a = Math.toDegrees(Math.atan2(dy, dx));
-      if (((a - aMin) % 360 + 360) % 360 > angle) {
+      if ((((a - aMin) % 360) + 360) % 360 > angle) {
         return false;
       }
     }
@@ -285,15 +288,18 @@ class EcholocationDetectionMode extends DetectionMode {
     // Echolocation is directional and therefore limited by the vision angle.
     if (!testAngle(visionSource, test.point)) return false;
     // Echolocation is blocked by total cover and sound restrictions.
-    return !(CONFIG.Canvas.losBackend.testCollision(
-      { x: visionSource.x, y: visionSource.y },
-      test.point,
-      { type: "move", mode: "any", source: visionSource }
-    ) || CONFIG.Canvas.losBackend.testCollision(
-      { x: visionSource.x, y: visionSource.y },
-      test.point,
-      { type: "sound", mode: "any", source: visionSource }
-    ));
+    return !(
+      CONFIG.Canvas.losBackend.testCollision({ x: visionSource.x, y: visionSource.y }, test.point, {
+        type: "move",
+        mode: "any",
+        source: visionSource,
+      }) ||
+      CONFIG.Canvas.losBackend.testCollision({ x: visionSource.x, y: visionSource.y }, test.point, {
+        type: "sound",
+        mode: "any",
+        source: visionSource,
+      })
+    );
   }
 }
 
@@ -315,10 +321,7 @@ class InvisibilityDetectionMode extends DetectionMode {
   /** @override */
   _canDetect(visionSource, target) {
     // Only invisible tokens can be detected
-    return (
-      target instanceof Token &&
-      target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE)
-    );
+    return target instanceof Token && target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE);
   }
 
   /** @override */
@@ -335,7 +338,8 @@ class InvisibilityDetectionMode extends DetectionMode {
     if (source instanceof Token) {
       detectionModes = source.document.detectionModes;
       source.document.detectionModes = detectionModes.filter(
-        (m) => CONFIG.Canvas.detectionModes[m.id]?.type === DetectionMode.DETECTION_TYPES.SIGHT);
+        (m) => CONFIG.Canvas.detectionModes[m.id]?.type === DetectionMode.DETECTION_TYPES.SIGHT
+      );
     }
 
     // Temporarily remove the invisible status effect from the target (see TokenDocument#hasStatusEffect)
