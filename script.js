@@ -194,6 +194,22 @@ function updateTokens(actor, { force = false } = {}) {
   }
 }
 
+function testAngle(visionSource, point) {
+  const { angle, rotation, externalRadius } = visionSource.data;
+  if (angle !== 360) {
+    const dx = point.x - visionSource.x;
+    const dy = point.y - visionSource.y;
+    if (dx * dx + dy * dy > externalRadius * externalRadius) {
+      const aMin = rotation + 90 - angle / 2;
+      const a = Math.toDegrees(Math.atan2(dy, dx));
+      if (((a - aMin) % 360 + 360) % 360 > angle) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
@@ -266,6 +282,8 @@ class EcholocationDetectionMode extends DetectionMode {
 
   /** @override */
   _testLOS(visionSource, mode, target, test) {
+    // Echolocation is directional and therefore limited by the vision angle.
+    if (!testAngle(visionSource, test.point)) return false;
     // Echolocation is blocked by total cover and sound restrictions.
     return !(CONFIG.Canvas.losBackend.testCollision(
       { x: visionSource.x, y: visionSource.y },
