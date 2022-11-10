@@ -127,8 +127,22 @@ function updateTokens(actor, { force = false } = {}) {
     .reduce((entries, [sense, range]) => ({ ...entries, [sense]: range }), {});
 
   // Could use a better check than a localization-unfriendly label
-  if (actor.effects.some((e) => e.label === "Devil's Sight" && !e.disabled && !e.isSuppressed)) {
-    modes.devilsSight = 120;
+  for (const effect of actor.effects) {
+    if (effect.disabled || effect.isSuppressed) continue;
+    switch (effect.label) {
+      case "Devil's Sight":
+        modes.devilsSight = 120;
+        break;
+      case "See Invisibility":
+        modes.seeInvisibility = 10000;
+        break;
+      case "Echolocation":
+        if (modes.blindsight) {
+          modes.echolocation = modes.blindsight;
+          delete modes.blindsight;
+        }
+        break;
+    }
   }
 
   let madeUpdates = false;
@@ -158,12 +172,6 @@ function updateTokens(actor, { force = false } = {}) {
       updates.detectionModes.push({ id: "devilsSight", enabled: true, range: modes.devilsSight });
     }
 
-    // Blindsight
-    if (modes.blindsight) {
-      updates.detectionModes ??= [];
-      updates.detectionModes.push({ id: "blindsight", enabled: true, range: modes.blindsight });
-    }
-
     // Truesight
     if (modes.truesight && sight.visionMode !== "devilsSight") {
       const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
@@ -171,6 +179,23 @@ function updateTokens(actor, { force = false } = {}) {
       updates.sight = { visionMode: "devilsSight", ...defaults, range };
       updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "seeAll", enabled: true, range: modes.truesight });
+    }
+
+    // See Invisibility
+    if (modes.seeInvisibility) {
+      updates.detectionModes.push({ id: "seeInvisibility", enabled: true, range: modes.seeInvisibility });
+    }
+
+    // Blindsight
+    if (modes.blindsight) {
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "blindsight", enabled: true, range: modes.blindsight });
+    }
+
+    // Echolocation
+    if (modes.echolocation) {
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "echolocation", enabled: true, range: modes.echolocation });
     }
 
     // Tremorsense
