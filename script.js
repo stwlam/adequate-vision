@@ -46,7 +46,7 @@ Hooks.once("init", () => {
 Hooks.once("setup", () => {
   game.settings.register("adequate-vision", "linkActorSenses", {
     name: "Link Actor Senses (In Testing!)",
-    hint: "Automatically manage vision/detection modes according to the senses possessed by each token's corresponding actor.",
+    hint: "Automatically manage vision/detection modes according to the senses possessed by each token's corresponding actor. Currently only supported for PCs.",
     scope: "world",
     config: true,
     default: true,
@@ -67,7 +67,8 @@ Hooks.on("canvasReady", () => {
 
 // Update token sources when an actor's senses are updated
 Hooks.on("updateActor", (actor, changes, context, userId) => {
-  if (hasProperty(changes, "system.attributes.senses")) {
+  const hasSensesUpdate = Object.keys(flattenObject(changes)).some((c) => c.startsWith("system.attributes.senses"));
+  if (hasSensesUpdate) {
     updateTokens(actor);
   }
 });
@@ -99,7 +100,9 @@ Hooks.on("createToken", (token, context, userId) => {
 });
 Hooks.on("updateToken", (token, changes, context, userId) => {
   if (!token.actor) return;
-  if ("sight" in changes || "detectionModes" in changes) {
+
+  const changesKeys = Object.keys(flattenObject(changes));
+  if (changesKeys.some((k) => k.startsWith("sight") || k.startsWith("detectionModes"))) {
     updateTokens(token.actor);
   }
 });
@@ -176,36 +179,35 @@ function updateTokens(actor, { force = false } = {}) {
   const tokens = actor.getActiveTokens(false, true).filter((t) => t.sight.enabled);
   for (const token of tokens) {
     const updates = {};
+    const { sight, detectionModes } = token;
+    const canSeeInDark = ["darkvision", "devilsSight", "truesight"].some((m) => !!modes[m]);
 
     // VISION MODES
 
-    if (modes.devilsSight || modes.truesight) {
+    if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== modes.devilsSight)) {
       const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
-      const range = Math.max(modes.truesight ?? 0, modes.devilsSight ?? 0);
-      updates.sight = { visionMode: "devilsSight", ...defaults, range };
-    } else if (modes.darkvision) {
+      updates.sight = { visionMode: "devilsSight", ...defaults };
+    } else if (modes.darkvision && (sight.visionMode !== "darkvision" || sight.range !== modes.darkvision)) {
       const defaults = CONFIG.Canvas.visionModes.darkvision.vision.defaults;
       updates.sight = { visionMode: "darkvision", ...defaults, range: modes.darkvision };
-    } else {
-      const defaults = CONFIG.Canvas.visionModes.basic.vision.defaults;
-      updates.sight = { visionMode: "basic", ...defaults, range: 0 };
+    } else if (!canSeeInDark && token.sight.visionMode !== "basic" && token.sight.range !== null) {
+      updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
     }
-
-    // Don't override vision tint and attenuation set by the user
-    delete updates.sight.attenuation;
-    delete updates.sight.color
 
     // DETECTION MODES
 
-    updates.detectionModes = [];
-
     // Devil's sight
     if (modes.devilsSight) {
+      updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "devilsSight", enabled: true, range: modes.devilsSight });
     }
 
     // Truesight
-    if (modes.truesight) {
+    if (modes.truesight && sight.visionMode !== "devilsSight") {
+      const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
+      const range = Math.max(modes.truesight, modes.devilsSight ?? 0);
+      updates.sight = { visionMode: "devilsSight", ...defaults, range };
+      updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "seeAll", enabled: true, range: modes.truesight });
     }
 
@@ -216,24 +218,30 @@ function updateTokens(actor, { force = false } = {}) {
 
     // Blindsight
     if (modes.blindsight) {
+      updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "blindsight", enabled: true, range: modes.blindsight });
     }
 
     // Echolocation
     if (modes.echolocation) {
+      updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "echolocation", enabled: true, range: modes.echolocation });
     }
 
     // Tremorsense
     if (modes.tremorsense) {
-      updates.detectionModes.push({ id: "feelTremor", enabled: true, range: modes.tremorsense });
+      const hasFeelTremor = detectionModes.some((m) => m.id === "feelTremor" && m.range === mode.tremorsense);
+      if (!hasFeelTremor) {
+        updates.detectionModes ??= [];
+        updates.detectionModes.push({ id: "feelTremor", enabled: true, range: modes.tremorsense });
+      }
+    } else if (detectionModes.some((m) => m.id === "feelTremor")) {
+      updates.detectionModes = token._source.detectionModes.filter((m) => m.id !== "feelTremor");
     }
 
-    // Note: At the moment (10.288) `updateSource` doesn't return the correct diff (#8503).
-    // So we need to diff `updates` with the source data ourselves until it's fixed.
-    const changes = diffObject(token.toObject(), updates);
-    if (!isEmpty(changes)) {
-      token.updateSource(changes);
+    // Update?
+    if (Object.keys(updates).length > 0) {
+      token.updateSource(updates);
       madeUpdates = true;
     }
   }
