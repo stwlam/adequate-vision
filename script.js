@@ -183,6 +183,7 @@ function updateTokens(actor, { force = false } = {}) {
 
     // See Invisibility
     if (modes.seeInvisibility) {
+      updates.detectionModes ??= [];
       updates.detectionModes.push({ id: "seeInvisibility", enabled: true, range: modes.seeInvisibility });
     }
 
