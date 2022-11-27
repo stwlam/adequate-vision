@@ -33,7 +33,13 @@ Hooks.once("init", () => {
   });
 
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
+  CONFIG.Canvas.detectionModes.devilsSight = new DevilsSightDetectionMode();
+  CONFIG.Canvas.detectionModes.echolocation = new EcholocationDetectionMode();
+  CONFIG.Canvas.detectionModes.feelTremor.updateSource({ label: "DND5E.SenseTremorsense" });
+  CONFIG.Canvas.detectionModes.seeAll.updateSource({ label: "DND5E.SenseTruesight" });
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
+
+  CONFIG.specialStatusEffects.DEAF = "deaf";
 });
 
 // Register setting
@@ -101,6 +107,34 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
   }
 });
 
+Hooks.on("renderTokenConfig", (sheet, html) => {
+  if (!game.settings.get("adequate-vision", "linkActorSenses")) return;
+  // Disable input fields that are automatically managed
+  html[0].querySelectorAll(`
+    [name="sight.range"],
+    [name="sight.visionMode"],
+    [name="sight.brightness"],
+    [name="sight.saturation"],
+    [name="sight.contrast"],
+    [name^="detectionModes."]`)
+    .forEach((e) => {
+      e.disabled = true;
+
+      if (e.name.startsWith("sight.")) {
+        e.dataset.tooltip = "Managed by Adequate Vision";
+        e.dataset.tooltipDirection = "LEFT";
+      }
+
+      if (e.type === "range") {
+        e.style.filter = "grayscale(1.0) opacity(0.33)";
+        e.parentNode.querySelector(`.range-value`).style.filter = "opacity(0.67)";
+      }
+    });
+  // Remove the buttons to add/remove detection modes
+  html[0].querySelectorAll(`.detection-mode-controls`)
+    .forEach((e) => e.remove());
+});
+
 function onReady() {
   const tokens = canvas.scene?.tokens.contents ?? [];
   const actors = new Set(tokens.flatMap((t) => t.actor ?? []));
@@ -134,7 +168,8 @@ function updateTokens(actor, { force = false } = {}) {
     const { sight, detectionModes } = token;
     const canSeeInDark = ["darkvision", "devilsSight", "truesight"].some((m) => !!modes[m]);
 
-    // Devil's sight and darkvision
+    // VISION MODES
+
     if (modes.devilsSight && (sight.visionMode !== "devilsSight" || sight.range !== modes.devilsSight)) {
       const defaults = CONFIG.Canvas.visionModes.devilsSight.vision.defaults;
       updates.sight = { visionMode: "devilsSight", ...defaults };
@@ -143,6 +178,14 @@ function updateTokens(actor, { force = false } = {}) {
       updates.sight = { visionMode: "darkvision", ...defaults, range: modes.darkvision };
     } else if (!canSeeInDark && token.sight.visionMode !== "basic" && token.sight.range !== null) {
       updates.sight = { visionMode: "basic", contrast: 0, brightness: 0, saturation: 0, range: null };
+    }
+
+    // DETECTION MODES
+
+    // Devil's sight
+    if (modes.devilsSight) {
+      updates.detectionModes ??= [];
+      updates.detectionModes.push({ id: "devilsSight", enabled: true, range: modes.devilsSight });
     }
 
     // Blindsight
@@ -157,7 +200,7 @@ function updateTokens(actor, { force = false } = {}) {
       const range = Math.max(modes.truesight, modes.devilsSight ?? 0);
       updates.sight = { visionMode: "devilsSight", ...defaults, range };
       updates.detectionModes ??= [];
-      updates.detectionModes.push({ id: "seeInvisibility", enabled: true, range: modes.truesight });
+      updates.detectionModes.push({ id: "seeAll", enabled: true, range: modes.truesight });
     }
 
     // Tremorsense
@@ -184,11 +227,27 @@ function updateTokens(actor, { force = false } = {}) {
   }
 }
 
+function testAngle(visionSource, point) {
+  const { angle, rotation, externalRadius } = visionSource.data;
+  if (angle !== 360) {
+    const dx = point.x - visionSource.x;
+    const dy = point.y - visionSource.y;
+    if (dx * dx + dy * dy > externalRadius * externalRadius) {
+      const aMin = rotation + 90 - angle / 2;
+      const a = Math.toDegrees(Math.atan2(dy, dx));
+      if ((((a - aMin) % 360) + 360) % 360 > angle) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
       id: "blindsight",
-      label: "Blindsight",
+      label: "DND5E.SenseBlindsight",
       type: DetectionMode.DETECTION_TYPES.OTHER,
     });
   }
@@ -219,6 +278,71 @@ class BlindDetectionMode extends DetectionMode {
   }
 }
 
+class DevilsSightDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "devilsSight",
+      label: "Devil's Sight",
+      type: DetectionMode.DETECTION_TYPES.SIGHT,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    const filter = (this._detectionFilter ??= OutlineOverlayFilter.create({
+      outlineColor: [0.85, 0.85, 1.0, 1],
+      knockout: true,
+    }));
+    return filter;
+  }
+}
+
+class EcholocationDetectionMode extends DetectionMode {
+  constructor() {
+    super({
+      id: "echolocation",
+      label: "Echolocation",
+      type: DetectionMode.DETECTION_TYPES.SOUND,
+    });
+  }
+
+  /** @override */
+  static getDetectionFilter() {
+    const filter = (this._detectionFilter ??= OutlineOverlayFilter.create({
+      wave: true,
+      knockout: false,
+    }));
+    filter.thickness = 1;
+    return filter;
+  }
+
+  /** @override */
+  _canDetect(visionSource, target) {
+    // Echolocation doesn't work while deafened.
+    const source = visionSource.object;
+    return !(source instanceof Token && source.document.hasStatusEffect(CONFIG.specialStatusEffects.DEAF));
+  }
+
+  /** @override */
+  _testLOS(visionSource, mode, target, test) {
+    // Echolocation is directional and therefore limited by the vision angle.
+    if (!testAngle(visionSource, test.point)) return false;
+    // Echolocation is blocked by total cover and sound restrictions.
+    return !(
+      CONFIG.Canvas.losBackend.testCollision({ x: visionSource.x, y: visionSource.y }, test.point, {
+        type: "move",
+        mode: "any",
+        source: visionSource,
+      }) ||
+      CONFIG.Canvas.losBackend.testCollision({ x: visionSource.x, y: visionSource.y }, test.point, {
+        type: "sound",
+        mode: "any",
+        source: visionSource,
+      })
+    );
+  }
+}
+
 class InvisibilityDetectionMode extends DetectionMode {
   constructor() {
     super({
@@ -236,14 +360,8 @@ class InvisibilityDetectionMode extends DetectionMode {
 
   /** @override */
   _canDetect(visionSource, target) {
-    const source = visionSource.object;
-
-    // Only invisible tokens can be detected; the vision source must not be blinded
-    return (
-      !(source instanceof Token && source.document.hasStatusEffect(CONFIG.specialStatusEffects.BLIND)) &&
-      target instanceof Token &&
-      target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE)
-    );
+    // Only invisible tokens can be detected
+    return target instanceof Token && target.document.hasStatusEffect(CONFIG.specialStatusEffects.INVISIBLE);
   }
 
   /** @override */
@@ -260,7 +378,8 @@ class InvisibilityDetectionMode extends DetectionMode {
     if (source instanceof Token) {
       detectionModes = source.document.detectionModes;
       source.document.detectionModes = detectionModes.filter(
-        (m) => CONFIG.Canvas.detectionModes[m.id]?.type === DetectionMode.DETECTION_TYPES.SIGHT);
+        (m) => CONFIG.Canvas.detectionModes[m.id]?.type === DetectionMode.DETECTION_TYPES.SIGHT
+      );
     }
 
     // Temporarily remove the invisible status effect from the target (see TokenDocument#hasStatusEffect)

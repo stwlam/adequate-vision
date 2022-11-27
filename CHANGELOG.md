@@ -1,6 +1,11 @@
 # Changelog
 
 ## Version 0.1.0
+* Add echolocation as a detection mode
+* Add devil's sight as a separate detection mode to visually distinguish it from See Invisibility
+* Change See Invisibility to be unaffected by the blind status
+
+## Version 0.0.6
 * Extend actor-sense link support to NPCs
 * Handle Active Effect updates (in addition to creates/deletes)
 
