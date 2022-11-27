@@ -35,6 +35,8 @@ Hooks.once("init", () => {
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
   CONFIG.Canvas.detectionModes.devilsSight = new DevilsSightDetectionMode();
   CONFIG.Canvas.detectionModes.echolocation = new EcholocationDetectionMode();
+  CONFIG.Canvas.detectionModes.feelTremor.updateSource({ label: "DND5E.SenseTremorsense" });
+  CONFIG.Canvas.detectionModes.seeAll.updateSource({ label: "DND5E.SenseTruesight" });
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
 
   CONFIG.specialStatusEffects.DEAF = "deaf";
@@ -245,7 +247,7 @@ class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
       id: "blindsight",
-      label: "Blindsight",
+      label: "DND5E.SenseBlindsight",
       type: DetectionMode.DETECTION_TYPES.SIGHT,
     });
   }
