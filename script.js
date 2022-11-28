@@ -265,7 +265,7 @@ class BlindDetectionMode extends DetectionMode {
     super({
       id: "blindsight",
       label: "DND5E.SenseBlindsight",
-      type: DetectionMode.DETECTION_TYPES.SIGHT,
+      type: DetectionMode.DETECTION_TYPES.OTHER,
     });
   }
 
@@ -281,7 +281,17 @@ class BlindDetectionMode extends DetectionMode {
 
   /** @override */
   _canDetect(visionSource, target) {
-    return target instanceof Token || target instanceof DoorControl;
+    return true;
+  }
+
+  /** @override */
+  _testLOS(visionSource, mode, target, test) {
+    // Blindsight is restricted by total cover
+    return !CONFIG.Canvas.losBackend.testCollision(
+      { x: visionSource.x, y: visionSource.y },
+      test.point,
+      { type: "move", mode: "any", source: visionSource }
+    );
   }
 }
 
