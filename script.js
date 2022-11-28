@@ -35,6 +35,8 @@ Hooks.once("init", () => {
   CONFIG.Canvas.detectionModes.blindsight = new BlindDetectionMode();
   CONFIG.Canvas.detectionModes.devilsSight = new DevilsSightDetectionMode();
   CONFIG.Canvas.detectionModes.echolocation = new EcholocationDetectionMode();
+  CONFIG.Canvas.detectionModes.feelTremor.updateSource({ label: "DND5E.SenseTremorsense" });
+  CONFIG.Canvas.detectionModes.seeAll.updateSource({ label: "DND5E.SenseTruesight" });
   CONFIG.Canvas.detectionModes.seeInvisibility = new InvisibilityDetectionMode();
 
   CONFIG.specialStatusEffects.DEAF = "deaf";
@@ -102,6 +104,34 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
   }
 });
 
+Hooks.on("renderTokenConfig", (sheet, html) => {
+  if (!game.settings.get("adequate-vision", "linkActorSenses")) return;
+  // Disable input fields that are automatically managed
+  html[0].querySelectorAll(`
+    [name="sight.range"],
+    [name="sight.visionMode"],
+    [name="sight.brightness"],
+    [name="sight.saturation"],
+    [name="sight.contrast"],
+    [name^="detectionModes."]`)
+    .forEach((e) => {
+      e.disabled = true;
+
+      if (e.name.startsWith("sight.")) {
+        e.dataset.tooltip = "Managed by Adequate Vision";
+        e.dataset.tooltipDirection = "LEFT";
+      }
+
+      if (e.type === "range") {
+        e.style.filter = "grayscale(1.0) opacity(0.33)";
+        e.parentNode.querySelector(`.range-value`).style.filter = "opacity(0.67)";
+      }
+    });
+  // Remove the buttons to add/remove detection modes
+  html[0].querySelectorAll(`.detection-mode-controls`)
+    .forEach((e) => e.remove());
+});
+
 function onReady() {
   const tokens = canvas.scene?.tokens.contents ?? [];
   const actors = new Set(tokens.flatMap((t) => t.actor ?? []));
@@ -124,8 +154,22 @@ function updateTokens(actor, { force = false } = {}) {
     .reduce((entries, [sense, range]) => ({ ...entries, [sense]: range }), {});
 
   // Could use a better check than a localization-unfriendly label
-  if (actor.effects.some((e) => e.label === "Devil's Sight" && !e.disabled && !e.isSuppressed)) {
-    modes.devilsSight = 120;
+  for (const effect of actor.effects) {
+    if (effect.disabled || effect.isSuppressed) continue;
+    switch (effect.label) {
+      case "Devil's Sight":
+        modes.devilsSight = 120;
+        break;
+      case "See Invisibility":
+        modes.seeInvisibility = 10000;
+        break;
+      case "Echolocation":
+        if (modes.blindsight) {
+          modes.echolocation = modes.blindsight;
+          delete modes.blindsight;
+        }
+        break;
+    }
   }
 
   let madeUpdates = false;
@@ -220,7 +264,7 @@ class BlindDetectionMode extends DetectionMode {
   constructor() {
     super({
       id: "blindsight",
-      label: "Blindsight",
+      label: "DND5E.SenseBlindsight",
       type: DetectionMode.DETECTION_TYPES.SIGHT,
     });
   }
