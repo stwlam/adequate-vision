@@ -11,10 +11,10 @@
   "scripts": [
     "script.js"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "compatibility": {
     "minimum": "10",
-    "verified": "10.288"
+    "verified": "10.291"
   },
   "relationships": {
     "systems": [

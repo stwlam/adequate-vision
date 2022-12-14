@@ -107,13 +107,16 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
 Hooks.on("renderTokenConfig", (sheet, html) => {
   if (!game.settings.get("adequate-vision", "linkActorSenses")) return;
   // Disable input fields that are automatically managed
-  html[0].querySelectorAll(`
+  html[0]
+    .querySelectorAll(
+      `
     [name="sight.range"],
     [name="sight.visionMode"],
     [name="sight.brightness"],
     [name="sight.saturation"],
     [name="sight.contrast"],
-    [name^="detectionModes."]`)
+    [name^="detectionModes."]`
+    )
     .forEach((e) => {
       e.disabled = true;
 
@@ -128,8 +131,7 @@ Hooks.on("renderTokenConfig", (sheet, html) => {
       }
     });
   // Remove the buttons to add/remove detection modes
-  html[0].querySelectorAll(`.detection-mode-controls`)
-    .forEach((e) => e.remove());
+  html[0].querySelectorAll(`.detection-mode-controls`).forEach((e) => e.remove());
 });
 
 function onReady() {
@@ -193,7 +195,7 @@ function updateTokens(actor, { force = false } = {}) {
 
     // Don't override vision tint and attenuation set by the user
     delete updates.sight.attenuation;
-    delete updates.sight.color
+    delete updates.sight.color;
 
     // DETECTION MODES
 
@@ -287,11 +289,11 @@ class BlindDetectionMode extends DetectionMode {
   /** @override */
   _testLOS(visionSource, mode, target, test) {
     // Blindsight is restricted by total cover
-    return !CONFIG.Canvas.losBackend.testCollision(
-      { x: visionSource.x, y: visionSource.y },
-      test.point,
-      { type: "move", mode: "any", source: visionSource }
-    );
+    return !CONFIG.Canvas.losBackend.testCollision({ x: visionSource.x, y: visionSource.y }, test.point, {
+      type: "move",
+      mode: "any",
+      source: visionSource,
+    });
   }
 }
 

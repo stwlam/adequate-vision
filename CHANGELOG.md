@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.2.0
+* Restrict Blindsight by total cover (movement restriction) instead of line of sight
+* Rename Feel Tremor and See All modes to Tremorsense and Truesight
+* Disable `TokenConfig` input fields that are managed by "Link Actor Senses" feature
+
 ## Version 0.1.0
 * Add echolocation as a detection mode
 * Add devil's sight as a separate detection mode to visually distinguish it from See Invisibility
