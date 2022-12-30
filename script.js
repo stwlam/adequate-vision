@@ -105,7 +105,8 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
 });
 
 Hooks.on("renderTokenConfig", (sheet, html) => {
-  if (!game.settings.get("adequate-vision", "linkActorSenses")) return;
+  if (!(game.settings.get("adequate-vision", "linkActorSenses")
+    && ["character", "npc"].includes(sheet.object.actor?.type))) return;
   // Disable input fields that are automatically managed
   html[0]
     .querySelectorAll(
