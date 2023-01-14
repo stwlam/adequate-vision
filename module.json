@@ -11,7 +11,7 @@
   "scripts": [
     "script.js"
   ],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "compatibility": {
     "minimum": "10",
     "verified": "10.291"
@@ -23,7 +23,7 @@
         "type": "system",
         "compatibility": {
           "minimum": "2.0.3",
-          "verified": "2.0.3"
+          "verified": "2.1.2"
         }
       }
     ]

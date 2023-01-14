@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.2.1
+* Lock down token config only for PCs and NPCs
+* Indicate verified compatibility with dnd5e 2.1.2
+
 ## Version 0.2.0
 * Restrict Blindsight by total cover (movement restriction) instead of line of sight
 * Rename Feel Tremor and See All modes to Tremorsense and Truesight

@@ -45,7 +45,7 @@ Hooks.once("init", () => {
 // Register setting
 Hooks.once("setup", () => {
   game.settings.register("adequate-vision", "linkActorSenses", {
-    name: "Link Actor Senses (In Testing!)",
+    name: "Link Actor Senses",
     hint: "Automatically manage vision/detection modes according to the senses possessed by each token's corresponding actor.",
     scope: "world",
     config: true,
@@ -105,34 +105,36 @@ Hooks.on("updateToken", (token, changes, context, userId) => {
 });
 
 Hooks.on("renderTokenConfig", (sheet, html) => {
-  if (!(game.settings.get("adequate-vision", "linkActorSenses")
-    && ["character", "npc"].includes(sheet.object.actor?.type))) return;
+  const settingEnabled = game.settings.get("adequate-vision", "linkActorSenses");
+  const actorIsCreature = ["character", "npc"].includes(sheet.object.actor?.type);
+  if (!(settingEnabled && actorIsCreature)) return;
+
   // Disable input fields that are automatically managed
-  html[0]
-    .querySelectorAll(
-      `
-    [name="sight.range"],
-    [name="sight.visionMode"],
-    [name="sight.brightness"],
-    [name="sight.saturation"],
-    [name="sight.contrast"],
-    [name^="detectionModes."]`
-    )
-    .forEach((e) => {
-      e.disabled = true;
+  const selectors = [
+    '[name="sight.range"]',
+    '[name="sight.visionMode"]',
+    '[name="sight.brightness"]',
+    '[name="sight.saturation"]',
+    '[name="sight.contrast"]',
+    '[name^="detectionModes."]',
+  ].join(",");
 
-      if (e.name.startsWith("sight.")) {
-        e.dataset.tooltip = "Managed by Adequate Vision";
-        e.dataset.tooltipDirection = "LEFT";
-      }
+  for (const element of html[0].querySelectorAll(selectors).values()) {
+    element.disabled = true;
 
-      if (e.type === "range") {
-        e.style.filter = "grayscale(1.0) opacity(0.33)";
-        e.parentNode.querySelector(`.range-value`).style.filter = "opacity(0.67)";
-      }
-    });
+    if (element.name.startsWith("sight.")) {
+      element.dataset.tooltip = "Managed by Adequate Vision";
+      element.dataset.tooltipDirection = "LEFT";
+    }
+
+    if (element.type === "range") {
+      element.style.filter = "grayscale(1.0) opacity(0.33)";
+      element.parentNode.querySelector(`.range-value`).style.filter = "opacity(0.67)";
+    }
+  }
+
   // Remove the buttons to add/remove detection modes
-  html[0].querySelectorAll(`.detection-mode-controls`).forEach((e) => e.remove());
+  html[0].querySelectorAll(".detection-mode-controls").forEach((e) => e.remove());
 });
 
 function onReady() {
