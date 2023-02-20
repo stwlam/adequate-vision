@@ -72,22 +72,26 @@ Hooks.on("updateActor", (actor, changes, context, userId) => {
   }
 });
 
+function onActiveEffectChange(effect) {
+  if (effect.parent instanceof Actor) {
+    updateTokens(effect.parent);
+
+    if (effect.flags.core?.statusId === CONFIG.specialStatusEffects.DEAF) {
+      for (const token of effect.parent.getActiveTokens()) {
+        if (canvas.effects.visionSources.has(token.sourceId)
+          && token.document.detectionModes.some(m => m.id === "echolocation" && m.enabled)) {
+            canvas.perception.update({ refreshVision: true }, true);
+            break;
+          }
+      }
+    }
+  }
+}
+
 // Handle updates of actor senses via AEs
-Hooks.on("createActiveEffect", (effect) => {
-  if (effect.parent instanceof Actor) {
-    updateTokens(effect.parent);
-  }
-});
-Hooks.on("updateActiveEffect", (effect) => {
-  if (effect.parent instanceof Actor) {
-    updateTokens(effect.parent);
-  }
-});
-Hooks.on("deleteActiveEffect", (effect) => {
-  if (effect.parent instanceof Actor) {
-    updateTokens(effect.parent);
-  }
-});
+Hooks.on("createActiveEffect", onActiveEffectChange);
+Hooks.on("updateActiveEffect", onActiveEffectChange);
+Hooks.on("deleteActiveEffect", onActiveEffectChange);
 
 // Process when a new token is added or updated
 Hooks.on("createToken", (token, context, userId) => {
