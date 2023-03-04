@@ -153,7 +153,7 @@ function updateTokens(actor, { force = false } = {}) {
   // Only make updates if the following are true
   const linkActorSenses = game.settings.get("adequate-vision", "linkActorSenses");
   const tokenVisionEnabled = !!canvas.scene?.tokenVision;
-  const userIsObserver = actor.getUserLevel(game.user) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+  const userIsObserver = actor.testUserPermission(game.user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER);
   const checks = [linkActorSenses, tokenVisionEnabled, userIsObserver, ["character", "npc"].includes(actor.type)];
   if (!checks.every((c) => c)) return;
 
