@@ -398,7 +398,12 @@ class InvisibilityDetectionMode extends DetectionMode {
 
     const source = visionSource.object;
     const statusId = CONFIG.specialStatusEffects.INVISIBLE;
+    const visionSources = canvas.effects.visionSources;
     let effects, detectionModes;
+
+    // Temporarily remove all other vision sources
+    canvas.effects.visionSources = new foundry.utils.Collection();
+    canvas.effects.visionSources.set("", visionSource);
 
     // Temporarily remove all detection modes that are not sight-based from the source
     if (source instanceof Token) {
@@ -412,8 +417,8 @@ class InvisibilityDetectionMode extends DetectionMode {
     if (!target.actor) {
       const icon = CONFIG.statusEffects.find((e) => e.id === statusId)?.icon;
 
-      effects = this.effects;
-      this.effects = this.effects.filter((e) => e !== icon);
+      effects = target.document.effects;
+      target.document.effects = effects.filter((e) => e !== icon);
     } else {
       effects = target.actor.effects.filter((e) => !e.disabled && e.getFlag("core", "statusId") === statusId);
       for (const effect of effects) {
@@ -424,6 +429,9 @@ class InvisibilityDetectionMode extends DetectionMode {
     // Test sight-based visibility without the invisible status effect
     const isVisible = canvas.effects.visibility.testVisibility(test.point, { tolerance: 0, object: target });
 
+    // Restore the vision sources
+    canvas.effects.visionSources = visionSources;
+
     // Restore the detection modes
     if (detectionModes) {
       source.document.detectionModes = detectionModes;
@@ -431,7 +439,7 @@ class InvisibilityDetectionMode extends DetectionMode {
 
     // Restore the status effect
     if (!target.actor) {
-      this.effects = effects;
+      target.document.effects = effects;
     } else {
       for (const effect of effects) {
         effect.disabled = false;
