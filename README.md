@@ -13,6 +13,10 @@ Additionally, it includes a setting ("Link Actor Senses") to link each token's v
 
 No server updates are made with the "Link Actor Senses" setting. Try it, and if you don't like it, disable the setting to undo all the changes made. The vision and detection modes will still be available with the setting disabled.
 
+## End of Life Notice
+
+Adequate Vision will not be updated for Foundry V11 compatibility, but it will stick around for those not wanting to immediately upgrade to V10. For V11, I recommend using [Vision/Detection Modes 5e](https://github.com/dev7355608/vision-5e) by dev7355608 (also the author of [Perfect Vision](https://github.com/dev7355608/perfect-vision)).
+
 ---
 
 ![Dorfvision](https://raw.githubusercontent.com/stwlam/adequate-vision/master/dorfvision.webp)
